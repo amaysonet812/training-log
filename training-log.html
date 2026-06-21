@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+<meta name="apple-mobile-web-app-title" content="Training Log" />
+<title>Station Training Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1C1E1F;
+    --bg-alt: #161718;
+    --line: #2A2C2D;
+    --line2: #3A3D3E;
+    --text: #EDEAE3;
+    --muted: #9A9590;
+    --dim: #6B6661;
+    --red: #D8392B;
+    --amber: #B8893F;
+    --green: #3D5A4C;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Oswald', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 2rem);
+    padding-top: env(safe-area-inset-top, 0);
+  }
+  .mono { font-family: 'JetBrains Mono', monospace; }
+  .display { font-family: 'Oswald', sans-serif; }
+
+  header.top {
+    border-bottom: 3px solid var(--red);
+    padding: 1.5rem 1.25rem 1rem;
+    background: var(--bg-alt);
+  }
+  .brand-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.25rem; }
+  .brand-label { font-size: 0.7rem; letter-spacing: 0.15em; color: var(--amber); font-weight: 600; }
+  h1.title { font-size: 1.6rem; font-weight: 700; margin: 0; letter-spacing: 0.01em; }
+  .start-date { font-size: 0.7rem; color: var(--dim); margin-top: 0.3rem; display: flex; align-items: center; gap: 0.35rem; }
+
+  .week-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 0.5rem;
+    padding: 0.9rem 1.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .week-scroll::-webkit-scrollbar { height: 0; }
+  .week-pill {
+    flex: 0 0 auto;
+    padding: 0.5rem 0.85rem;
+    border-radius: 5px;
+    border: 1px solid #2E3031;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: inherit;
+  }
+  .week-pill.active { border-color: var(--red); background: var(--red); color: var(--bg); }
+  .week-pill .wk-num { font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; letter-spacing: 0.08em; font-weight: 700; }
+  .week-pill .wk-label { font-size: 0.74rem; font-weight: 600; white-space: nowrap; }
+
+  .phase-banner {
+    padding: 0.9rem 1.25rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .week-range { font-size: 0.7rem; color: #7D8A82; }
+  .phase-tag {
+    font-size: 0.62rem;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    border: 1px solid rgba(184,137,63,0.35);
+    border-radius: 3px;
+    padding: 0.2rem 0.5rem;
+  }
+
+  .day-tabs {
+    display: flex;
+    overflow-x: auto;
+    border-bottom: 1px solid #333638;
+    margin-top: 0.75rem;
+  }
+  .day-tabs::-webkit-scrollbar { height: 0; }
+  .day-tab {
+    flex: 0 0 auto;
+    min-width: 84px;
+    padding: 0.7rem 0.5rem 0.6rem;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    border-bottom: 3px solid transparent;
+    position: relative;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .day-tab.active { background: var(--red); color: var(--bg); border-bottom: none; }
+  .day-tab .d-num { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 0.2rem; }
+  .day-tab .d-code { font-size: 0.8rem; font-weight: 700; }
+  .day-tab .d-check { position: absolute; top: 6px; right: 6px; }
+
+  .day-header { padding: 1.25rem 1.25rem 0.5rem; }
+  .day-header-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  .day-meta { font-size: 0.7rem; color: var(--amber); letter-spacing: 0.1em; margin-bottom: 0.2rem; }
+  .day-title { font-size: 1.3rem; font-weight: 700; margin: 0; }
+  .day-sub { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; }
+  .day-count { font-size: 1.1rem; font-weight: 700; text-align: right; }
+  .day-count-label { font-size: 0.6rem; color: var(--dim); letter-spacing: 0.1em; text-align: right; }
+  .progress-track { height: 4px; background: var(--line); margin-top: 0.9rem; border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--red); transition: width 0.25s ease; }
+
+  .exercise-list { padding: 0.5rem 1.25rem; }
+  .ex-row { border-bottom: 1px solid var(--line); padding: 0.85rem 0; }
+  .ex-row:last-child { border-bottom: none; }
+  .ex-head { display: flex; justify-content: space-between; align-items: flex-start; cursor: pointer; }
+  .ex-name-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .ex-idx { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--dim); min-width: 1.2rem; }
+  .ex-name { font-size: 0.98rem; font-weight: 600; }
+  .ex-name.done { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--green); }
+  .ex-sub-row { display: flex; align-items: center; gap: 0.5rem; margin-left: 1.7rem; margin-top: 0.15rem; flex-wrap: wrap; }
+  .ex-target { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--amber); }
+  .ex-rpe { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--dim); }
+  .ex-last { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #7D8A82; }
+  .ex-progress-hint {
+    margin-left: 1.7rem; margin-top: 0.35rem; font-size: 0.68rem; color: var(--green);
+    display: flex; align-items: center; gap: 0.3rem; font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .chevron-btn { background: none; border: none; color: var(--dim); padding: 0.2rem; cursor: pointer; }
+
+  .ex-body { margin-left: 1.7rem; margin-top: 0.6rem; }
+  .ex-note { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #7D8A82; margin-bottom: 0.55rem; font-style: italic; }
+  .set-rows { display: flex; flex-direction: column; gap: 0.45rem; }
+  .set-row { display: flex; align-items: center; gap: 0.5rem; }
+  .set-box {
+    width: 2.4rem; height: 2.4rem; flex: 0 0 auto;
+    border-radius: 3px; border: 2px solid var(--line2);
+    background: transparent; color: var(--dim);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700;
+    cursor: pointer; transition: all 0.12s ease;
+  }
+  .set-box.done { border-color: var(--green); background: var(--green); color: var(--text); }
+  .weight-wrap { display: flex; align-items: center; gap: 0.35rem; }
+  .weight-input {
+    width: 4.2rem; height: 2.4rem;
+    background: #202223; border: 1px solid var(--line2); border-radius: 3px;
+    color: var(--text); font-size: 0.82rem; text-align: center; padding: 0 0.3rem;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .weight-input::placeholder { color: #4A4D4E; }
+  .weight-unit { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--dim); }
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type="number"] { -moz-appearance: textfield; }
+
+  .footer-bar { padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.6rem; }
+  .btn-reset, .btn-confirm, .btn-cancel {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.05em;
+    border-radius: 3px; padding: 0.5rem 0.9rem; cursor: pointer;
+  }
+  .btn-reset { background: none; border: 1px solid var(--line2); color: var(--muted); display: flex; align-items: center; gap: 0.4rem; }
+  .btn-confirm { background: var(--red); border: none; color: var(--bg); font-weight: 700; }
+  .btn-cancel { background: none; border: 1px solid var(--line2); color: var(--muted); }
+  .day-complete { color: var(--green); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; display: flex; align-items: center; gap: 0.35rem; font-family: 'JetBrains Mono', monospace; }
+
+  button:focus-visible, .set-box:focus-visible, .week-pill:focus-visible, .day-tab:focus-visible {
+    outline: 2px solid var(--red); outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .set-box, .week-pill, .day-tab, .progress-fill { transition: none !important; }
+  }
+
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ---------- Program definition ----------
+const PHASES = {
+  groove: { label: "Groove", mainReps: "8-10", accReps: "12-15" },
+  strength: { label: "Strength", mainReps: "6-8", accReps: "10-12" },
+  peak: { label: "Peak", mainReps: "5-6", accReps: "10-12" },
+  definition: { label: "Definition", mainReps: "10-12", accReps: "15-20" },
+};
+
+const WEEK_META = {
+  1: { phase: "groove", label: "Groove In" },
+  2: { phase: "groove", label: "Groove In" },
+  3: { phase: "strength", label: "Strength Push" },
+  4: { phase: "strength", label: "Strength Push" },
+  5: { phase: "peak", label: "Peak" },
+  6: { phase: "definition", label: "Definition Finisher" },
+};
+
+const PROGRAM_START = new Date(2026, 5, 22); // June 22, 2026
+const TOTAL_WEEKS = 6;
+
+const DAY_TEMPLATES = [
+  {
+    id: "d1", num: 1, code: "PUSH", title: "Upper Body Push", sub: "Chest / Shoulders / Triceps",
+    exercises: [
+      { id: "e1", name: "Incline DB Press", kind: "main", note: "30-45° angle — upper chest priority", sets: 4, logWeight: true },
+      { id: "e2", name: "Standing DB Shoulder Press", kind: "main", note: "", sets: 3, logWeight: true },
+      { id: "e3", name: "Low-to-High Cable Fly", kind: "acc", note: "Targets upper pec fibers", sets: 3, logWeight: true },
+      { id: "e4", name: "Cable Lateral Raise", kind: "acc", note: "Slow, controlled — builds the cap", sets: 4, logWeight: true },
+      { id: "e5", name: "Rear Delt Cable Fly", kind: "acc", note: "Don't skip — 3D shoulder look", sets: 3, logWeight: true },
+      { id: "e6", name: "Overhead Triceps Extension", kind: "acc", note: "Rope or DB", sets: 3, logWeight: true },
+    ],
+  },
+  {
+    id: "d2", num: 2, code: "LEGS", title: "Lower Body + Back Resilience", sub: "Hinge / Single-Leg / Core",
+    exercises: [
+      { id: "e1", name: "Trap Bar Deadlift / DB RDL", kind: "main", note: "RPE 6-7 — never grind this", sets: 4, logWeight: true, capRpe: true },
+      { id: "e2", name: "Front-Foot Elevated Split Squat", kind: "acc", note: "Low spinal load, hip-focused", sets: 3, logWeight: true },
+      { id: "e3", name: "Hip Thrust", kind: "main", note: "Glute strength protects the back", sets: 3, logWeight: true },
+      { id: "e4", name: "Goblet Squat", kind: "acc", note: "", sets: 3, logWeight: true },
+      { id: "e5", name: "Paloff Press", kind: "fixed", target: "3 x 12/side", note: "Anti-rotation — golf/soccer carryover", sets: 3, logWeight: true },
+      { id: "e6", name: "Bird Dog / Dead Bug", kind: "fixed", target: "3 x 10/side", note: "Daily-bread back stability", sets: 3, logWeight: false },
+    ],
+  },
+  {
+    id: "d3", num: 3, code: "PULL", title: "Pull + Core", sub: "Back / Biceps",
+    exercises: [
+      { id: "e1", name: "Lat Pulldown / Pull-Up", kind: "main", note: "", sets: 4, logWeight: true },
+      { id: "e2", name: "Chest-Supported Row", kind: "main", note: "Zero lower back stress", sets: 3, logWeight: true },
+      { id: "e3", name: "Single-Arm DB Row", kind: "acc", note: "", sets: 3, logWeight: true },
+      { id: "e4", name: "Face Pull", kind: "acc", note: "Rear delt + posture", sets: 3, logWeight: true },
+      { id: "e5", name: "Hammer Curl", kind: "acc", note: "", sets: 3, logWeight: true },
+      { id: "e6", name: "Hanging Knee Raise / Cable Crunch", kind: "fixed", target: "3 x 12-15", note: "", sets: 3, logWeight: false },
+      { id: "e7", name: "Suitcase Carry", kind: "fixed", target: "3 x 30m/side", note: "Loaded carry — real-world back resilience", sets: 3, logWeight: true },
+    ],
+  },
+  {
+    id: "d4", num: 4, code: "PERF", title: "Athletic Performance", sub: "Soccer / Golf Carryover",
+    exercises: [
+      { id: "e1", name: "Trap Bar Jump / Box Jump", kind: "fixed", target: "4 x 5", note: "Power development", sets: 4, logWeight: false },
+      { id: "e2", name: "Lateral Bound", kind: "fixed", target: "3 x 6/side", note: "Soccer change-of-direction", sets: 3, logWeight: false },
+      { id: "e3", name: "Cable Wood Chop", kind: "acc", note: "Golf swing power transfer", sets: 3, logWeight: true },
+      { id: "e4", name: "Single-Leg RDL", kind: "acc", note: "Balance + injury-proofing", sets: 3, logWeight: true },
+      { id: "e5", name: "Copenhagen Plank / Side Plank", kind: "fixed", target: "3 x 20-30s/side", note: "Groin/hip — common soccer injury spot", sets: 3, logWeight: false },
+      { id: "e6", name: "90/90 Hip Switch", kind: "fixed", target: "3 x 8/side", note: "Hip mobility", sets: 3, logWeight: false },
+    ],
+  },
+  {
+    id: "d5", num: 5, code: "DEF", title: "Push/Pull Definition + Mobility", sub: "Shoulders / Back / Recovery",
+    exercises: [
+      { id: "e1", name: "Incline Smith / Barbell Press", kind: "main", note: "Light-moderate load", sets: 3, logWeight: true },
+      { id: "e2", name: "Arnold Press", kind: "main", note: "", sets: 3, logWeight: true },
+      { id: "e3", name: "Cable Lateral Raise", kind: "acc", note: "", sets: 3, logWeight: true },
+      { id: "e4", name: "Wide-Grip Lat Pulldown", kind: "acc", note: "", sets: 3, logWeight: true },
+      { id: "e5", name: "Rear Delt Fly", kind: "acc", note: "", sets: 3, logWeight: true },
+      { id: "e6", name: "Mobility Flow", kind: "fixed", target: "10 min", note: "Cat-Cow + Bird Dog + 90/90 — good station-day work", sets: 1, logWeight: false },
+    ],
+  },
+];
+
+function repTargetFor(ex, week) {
+  if (ex.kind === "fixed") return ex.target;
+  const phase = PHASES[WEEK_META[week].phase];
+  const reps = ex.kind === "main" ? phase.mainReps : phase.accReps;
+  return `${ex.sets} x ${reps}`;
+}
+
+const STORAGE_KEY = "ff-log-program-v1";
+
+function getWeekDateRange(weekNum) {
+  const start = new Date(PROGRAM_START);
+  start.setDate(start.getDate() + (weekNum - 1) * 7);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+function getCurrentProgramWeek() {
+  const now = new Date();
+  const startMidnight = new Date(PROGRAM_START.getFullYear(), PROGRAM_START.getMonth(), PROGRAM_START.getDate());
+  const nowMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffDays = Math.floor((nowMidnight - startMidnight) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 1;
+  const week = Math.floor(diffDays / 7) + 1;
+  return Math.min(Math.max(week, 1), TOTAL_WEEKS);
+}
+
+// ---------- State ----------
+let progress = {};
+try {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) progress = JSON.parse(raw);
+} catch (e) {}
+
+let activeWeek = getCurrentProgramWeek();
+let activeDay = "d1";
+let expanded = {}; // default all expanded unless explicitly false
+let showResetConfirm = false;
+
+function persist() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+  } catch (e) {
+    console.error("Storage error:", e);
+  }
+}
+
+function dayKey(week, dayId) { return `w${week}-${dayId}`; }
+
+function getSetsArr(week, dayId, exId, totalSets) {
+  const dProg = progress[dayKey(week, dayId)] || {};
+  const stored = dProg[exId];
+  if (stored && Array.isArray(stored)) {
+    return stored.map((s) => (typeof s === "object" && s !== null ? s : { done: !!s, weight: "" }));
+  }
+  return new Array(totalSets).fill(null).map(() => ({ done: false, weight: "" }));
+}
+
+function getPriorWeekWeight(week, dayId, exId) {
+  for (let w = week - 1; w >= 1; w--) {
+    const arr = getSetsArr(w, dayId, exId, 0);
+    const logged = arr.filter((s) => s.weight !== "" && s.weight != null);
+    if (logged.length > 0) {
+      const maxW = Math.max(...logged.map((s) => parseFloat(s.weight) || 0));
+      const allSetsDone = arr.every((s) => s.done);
+      return { weight: maxW, allSetsDone, week: w };
+    }
+  }
+  return null;
+}
+
+function toggleSet(week, dayId, exId, setIdx, totalSets) {
+  const k = dayKey(week, dayId);
+  const dProg = progress[k] || {};
+  const current = getSetsArr(week, dayId, exId, totalSets);
+  const next = [...current];
+  next[setIdx] = { ...next[setIdx], done: !next[setIdx].done };
+  progress = { ...progress, [k]: { ...dProg, [exId]: next } };
+  persist();
+  render();
+}
+
+function setWeight(week, dayId, exId, setIdx, totalSets, value) {
+  const k = dayKey(week, dayId);
+  const dProg = progress[k] || {};
+  const current = getSetsArr(week, dayId, exId, totalSets);
+  const next = [...current];
+  next[setIdx] = { ...next[setIdx], weight: value };
+  progress = { ...progress, [k]: { ...dProg, [exId]: next } };
+  persist();
+  // Don't full re-render on every keystroke (loses focus) — just keep state in sync.
+}
+
+function toggleExpand(exId) {
+  expanded = { ...expanded, [exId]: expanded[exId] === false ? true : false };
+  render();
+}
+
+function resetDay(week, dayId) {
+  progress = { ...progress, [dayKey(week, dayId)]: {} };
+  persist();
+  showResetConfirm = false;
+  render();
+}
+
+function dayCompletion(week, day) {
+  let done = 0, total = 0;
+  day.exercises.forEach((ex) => {
+    total += ex.sets;
+    const arr = getSetsArr(week, day.id, ex.id, ex.sets);
+    done += arr.filter((s) => s.done).length;
+  });
+  return { done, total };
+}
+
+// ---------- Icons (inline SVG, no deps) ----------
+const ICONS = {
+  flame: `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D8392B" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 17a2.5 2.5 0 0 0 2.5-2.5c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2 1z"/></svg>`,
+  calendar: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#6B6661" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>`,
+  check: (color, size) => `<svg width="${size||15}" height="${size||15}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  chevronUp: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6661" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>`,
+  chevronDown: `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B6661" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`,
+  trendingUp: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3D5A4C" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`,
+  reset: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9A9590" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`,
+};
+
+function esc(str) {
+  const div = document.createElement("div");
+  div.textContent = str == null ? "" : String(str);
+  return div.innerHTML;
+}
+
+// ---------- Render ----------
+function render() {
+  const app = document.getElementById("app");
+  const currentDay = DAY_TEMPLATES.find((d) => d.id === activeDay);
+  const { done, total } = dayCompletion(activeWeek, currentDay);
+  const dayDone = total > 0 && done === total;
+  const weekMeta = WEEK_META[activeWeek];
+  const phase = PHASES[weekMeta.phase];
+  const currentProgramWeek = getCurrentProgramWeek();
+
+  const weekPills = Array.from({ length: TOTAL_WEEKS }, (_, i) => i + 1).map((w) => {
+    const meta = WEEK_META[w];
+    const isActive = w === activeWeek;
+    const isCurrent = w === currentProgramWeek;
+    return `
+      <button class="week-pill ${isActive ? "active" : ""}" data-week="${w}">
+        <div class="wk-num">WK ${w}${isCurrent ? " •" : ""}</div>
+        <div class="wk-label">${esc(meta.label)}</div>
+      </button>`;
+  }).join("");
+
+  const dayTabs = DAY_TEMPLATES.map((day) => {
+    const { done: dDone, total: dTotal } = dayCompletion(activeWeek, day);
+    const isComplete = dTotal > 0 && dDone === dTotal;
+    const isActive = day.id === activeDay;
+    return `
+      <button class="day-tab ${isActive ? "active" : ""}" data-day="${day.id}">
+        <div class="d-num">DAY ${day.num}</div>
+        <div class="d-code">${esc(day.code)}</div>
+        ${isComplete ? `<span class="d-check">${ICONS.check(isActive ? "#1C1E1F" : "#3D5A4C", 12)}</span>` : ""}
+      </button>`;
+  }).join("");
+
+  const exerciseRows = currentDay.exercises.map((ex, idx) => {
+    const setsArr = getSetsArr(activeWeek, currentDay.id, ex.id, ex.sets);
+    const exDone = setsArr.filter((s) => s.done).length;
+    const isExpanded = expanded[ex.id] !== false;
+    const target = repTargetFor(ex, activeWeek);
+    const prior = activeWeek > 1 ? getPriorWeekWeight(activeWeek, currentDay.id, ex.id) : null;
+    const readyToProgress = prior && prior.allSetsDone && setsArr.every((s) => s.weight === "" || s.weight == null);
+
+    const setRows = setsArr.map((setData, sIdx) => `
+      <div class="set-row">
+        <button class="set-box ${setData.done ? "done" : ""}" data-action="toggle-set" data-day="${currentDay.id}" data-ex="${ex.id}" data-idx="${sIdx}" data-sets="${ex.sets}"
+          aria-label="Set ${sIdx + 1} ${setData.done ? "complete" : "incomplete"}">
+          ${setData.done ? ICONS.check("#EDEAE3") : sIdx + 1}
+        </button>
+        ${ex.logWeight ? `
+          <div class="weight-wrap">
+            <input type="number" inputmode="decimal" placeholder="—" class="weight-input"
+              value="${esc(setData.weight)}"
+              data-action="set-weight" data-day="${currentDay.id}" data-ex="${ex.id}" data-idx="${sIdx}" data-sets="${ex.sets}"
+              aria-label="Set ${sIdx + 1} weight in pounds" />
+            <span class="weight-unit">lb</span>
+          </div>` : ""}
+      </div>`).join("");
+
+    return `
+      <div class="ex-row">
+        <div class="ex-head" data-action="toggle-expand" data-ex="${ex.id}">
+          <div style="flex:1">
+            <div class="ex-name-row">
+              <span class="ex-idx">${String(idx + 1).padStart(2, "0")}</span>
+              <span class="ex-name ${exDone === ex.sets ? "done" : ""}">${esc(ex.name)}</span>
+            </div>
+            <div class="ex-sub-row">
+              <span class="ex-target">${esc(target)}</span>
+              ${ex.capRpe ? `<span class="ex-rpe">RPE 6-7 max</span>` : ""}
+              ${prior && prior.weight > 0 ? `<span class="ex-last">last: ${esc(prior.weight)} lb (wk ${prior.week})</span>` : ""}
+            </div>
+            ${readyToProgress ? `
+              <div class="ex-progress-hint">${ICONS.trendingUp} Hit all sets last week — try +5 lb today</div>` : ""}
+          </div>
+          <button class="chevron-btn" aria-label="${isExpanded ? "Collapse" : "Expand"}">
+            ${isExpanded ? ICONS.chevronUp : ICONS.chevronDown}
+          </button>
+        </div>
+        ${isExpanded ? `
+          <div class="ex-body">
+            ${ex.note ? `<div class="ex-note">${esc(ex.note)}</div>` : ""}
+            <div class="set-rows">${setRows}</div>
+          </div>` : ""}
+      </div>`;
+  }).join("");
+
+  app.innerHTML = `
+    <header class="top">
+      <div class="brand-row">${ICONS.flame}<span class="brand-label">STATION TRAINING LOG</span></div>
+      <h1 class="title">6-WEEK PROGRAM</h1>
+      <div class="start-date">${ICONS.calendar} Starts ${PROGRAM_START.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
+    </header>
+
+    <div class="week-scroll">${weekPills}</div>
+
+    <div class="phase-banner">
+      <div class="week-range">${getWeekDateRange(activeWeek)}</div>
+      <div class="phase-tag">PHASE: ${phase.label.toUpperCase()} — MAIN ${phase.mainReps} / ACC ${phase.accReps}</div>
+    </div>
+
+    <div class="day-tabs">${dayTabs}</div>
+
+    <div class="day-header">
+      <div class="day-header-row">
+        <div>
+          <div class="day-meta">WEEK ${activeWeek} · DAY ${currentDay.num} — ${esc(currentDay.code)}</div>
+          <h2 class="day-title">${esc(currentDay.title)}</h2>
+          <div class="day-sub">${esc(currentDay.sub)}</div>
+        </div>
+        <div>
+          <div class="day-count" style="color:${dayDone ? "#3D5A4C" : "#EDEAE3"}">${done}/${total}</div>
+          <div class="day-count-label">SETS LOGGED</div>
+        </div>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${total > 0 ? (done / total) * 100 : 0}%; background:${dayDone ? "#3D5A4C" : "#D8392B"}"></div></div>
+    </div>
+
+    <div class="exercise-list">${exerciseRows}</div>
+
+    <div class="footer-bar">
+      ${!showResetConfirm ? `
+        <button class="btn-reset" data-action="show-reset">${ICONS.reset} RESET WK ${activeWeek} · DAY ${currentDay.num}</button>
+      ` : `
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn-confirm" data-action="confirm-reset">CONFIRM RESET</button>
+          <button class="btn-cancel" data-action="cancel-reset">CANCEL</button>
+        </div>
+      `}
+      ${dayDone ? `<div class="day-complete">${ICONS.check("#3D5A4C", 14)} DAY COMPLETE</div>` : ""}
+    </div>
+  `;
+
+  attachListeners();
+}
+
+function attachListeners() {
+  document.querySelectorAll(".week-pill").forEach((el) => {
+    el.addEventListener("click", () => {
+      activeWeek = parseInt(el.dataset.week, 10);
+      render();
+    });
+  });
+
+  document.querySelectorAll(".day-tab").forEach((el) => {
+    el.addEventListener("click", () => {
+      activeDay = el.dataset.day;
+      render();
+    });
+  });
+
+  document.querySelectorAll('[data-action="toggle-expand"]').forEach((el) => {
+    el.addEventListener("click", (e) => {
+      // Avoid double-fire if the chevron button inside is clicked
+      toggleExpand(el.dataset.ex);
+    });
+  });
+
+  document.querySelectorAll('[data-action="toggle-set"]').forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleSet(activeWeek, el.dataset.day, el.dataset.ex, parseInt(el.dataset.idx, 10), parseInt(el.dataset.sets, 10));
+    });
+  });
+
+  document.querySelectorAll('[data-action="set-weight"]').forEach((el) => {
+    el.addEventListener("click", (e) => e.stopPropagation());
+    el.addEventListener("input", (e) => {
+      setWeight(activeWeek, el.dataset.day, el.dataset.ex, parseInt(el.dataset.idx, 10), parseInt(el.dataset.sets, 10), e.target.value);
+    });
+  });
+
+  const resetBtn = document.querySelector('[data-action="show-reset"]');
+  if (resetBtn) resetBtn.addEventListener("click", () => { showResetConfirm = true; render(); });
+
+  const confirmBtn = document.querySelector('[data-action="confirm-reset"]');
+  if (confirmBtn) confirmBtn.addEventListener("click", () => {
+    const currentDay = DAY_TEMPLATES.find((d) => d.id === activeDay);
+    resetDay(activeWeek, currentDay.id);
+  });
+
+  const cancelBtn = document.querySelector('[data-action="cancel-reset"]');
+  if (cancelBtn) cancelBtn.addEventListener("click", () => { showResetConfirm = false; render(); });
+}
+
+render();
+</script>
+</body>
+</html>
